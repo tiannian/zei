@@ -110,8 +110,8 @@ serialize_deserialize!(Ctext);
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct ZeiHybridCipher {
-    pub(crate) ciphertext: Ctext,
-    pub(crate) ephemeral_public_key: XPublicKey,
+    pub ciphertext: Ctext,
+    pub ephemeral_public_key: XPublicKey,
 }
 
 /// I encrypt a message under a X25519 DH public key. I implement hybrid encryption where a symmetric key
