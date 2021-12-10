@@ -3,7 +3,11 @@ use crate::setup::PublicParams;
 use crate::xfr::asset_mixer::{
     batch_verify_asset_mixing, prove_asset_mixing, AssetMixProof, AssetMixingInstance,
 };
-use crate::xfr::proofs::{asset_amount_tracing_proofs, asset_proof, batch_verify_confidential_amount, batch_verify_confidential_amount_ref, batch_verify_confidential_asset, batch_verify_confidential_asset_ref, batch_verify_tracer_tracing_proof, range_proof};
+use crate::xfr::proofs::{
+    asset_amount_tracing_proofs, asset_proof, batch_verify_confidential_amount,
+    batch_verify_confidential_amount_ref, batch_verify_confidential_asset,
+    batch_verify_confidential_asset_ref, batch_verify_tracer_tracing_proof, range_proof,
+};
 use crate::xfr::sig::{XfrKeyPair, XfrMultiSig, XfrPublicKey};
 use crate::xfr::structs::*;
 use algebra::groups::{GroupArithmetic, Scalar as _, ScalarArithmetic};
@@ -171,13 +175,27 @@ pub fn gen_xfr_note<R: CryptoRng + RngCore>(
         return Err(eg!(ZeiError::ParameterError));
     }
 
-    check_keys(inputs, input_key_pairs).c(d!())?;
+    let input_public_keys = inputs
+        .iter()
+        .map(|i| i.open_asset_record.public_key)
+        .collect_vec();
+
+    check_keys(&input_public_keys.as_slice(), input_key_pairs).c(d!())?;
+
+    let output_public_keys = outputs
+        .iter()
+        .map(|o| o.open_asset_record.public_key)
+        .collect_vec();
 
     let body = gen_xfr_body(prng, inputs, outputs).c(d!())?;
 
     let multisig = compute_transfer_multisig(&body, input_key_pairs).c(d!())?;
 
-    Ok(XfrNote { body, multisig })
+    Ok(XfrNote {
+        body,
+        multisig,
+        output_public_keys,
+    })
 }
 
 /// I create the body of a xfr note. This body contains the data to be signed.
@@ -242,6 +260,11 @@ pub fn gen_xfr_body<R: CryptoRng + RngCore>(
     }
     let xfr_type = XfrType::from_inputs_outputs(inputs, outputs);
     check_asset_amount(inputs, outputs).c(d!())?;
+
+    let input_public_keys = inputs
+        .iter()
+        .map(|i| i.open_asset_record.public_key.clone())
+        .collect_vec();
 
     let single_asset = !matches!(
         xfr_type,
@@ -323,16 +346,19 @@ pub fn gen_xfr_body<R: CryptoRng + RngCore>(
         proofs,
         asset_tracing_memos: tracer_memos,
         owners_memos: owner_memos,
+        input_public_keys,
     })
 }
 
-fn check_keys(inputs: &[AssetRecord], input_key_pairs: &[&XfrKeyPair]) -> Result<()> {
-    if inputs.len() != input_key_pairs.len() {
+fn check_keys(
+    input_public_keys: &[XfrPublicKey],
+    input_key_pairs: &[&XfrKeyPair],
+) -> Result<()> {
+    if input_public_keys.len() != input_key_pairs.len() {
         return Err(eg!(ZeiError::ParameterError));
     }
-    for (input, key) in inputs.iter().zip(input_key_pairs.iter()) {
-        let inkey = &input.open_asset_record.blind_asset_record.public_key;
-        if inkey != &key.pub_key {
+    for (input, key) in input_public_keys.iter().zip(input_key_pairs.iter()) {
+        if input != &key.pub_key {
             return Err(eg!(ZeiError::ParameterError));
         }
     }
@@ -471,9 +497,9 @@ pub(crate) fn verify_transfer_multisig(xfr_note: &XfrNote) -> Result<()> {
         .c(d!(ZeiError::SerializationError))?;
     let pubkeys = xfr_note
         .body
-        .inputs
+        .input_public_keys
         .iter()
-        .map(|input| &input.public_key)
+        .map(|input| input)
         .collect_vec();
     xfr_note.multisig.verify(&pubkeys, &bytes)
 }
@@ -555,8 +581,12 @@ pub fn verify_bare_transaction<R: CryptoRng + RngCore>(
         .c(d!())?;
 
     // 2. verify confidential asset_types
-    batch_verify_confidential_asset_ref(prng, &params.pc_gens, conf_asset_type_records.as_slice())
-        .c(d!())?;
+    batch_verify_confidential_asset_ref(
+        prng,
+        &params.pc_gens,
+        conf_asset_type_records.as_slice(),
+    )
+    .c(d!())?;
 
     // 3. verify confidential asset mix proofs
     batch_verify_asset_mix(prng, params, conf_asset_mix_bodies.as_slice()).c(d!())
@@ -927,24 +957,34 @@ fn batch_verify_asset_mix<R: CryptoRng + RngCore>(
 
 // ASSET TRACING
 pub fn find_tracing_memos<'a>(
-    xfr_body: &'a XfrBody,
+    xfr_note: &'a XfrNote,
     pub_key: &AssetTracerEncKeys,
-) -> Result<Vec<(&'a BlindAssetRecord, &'a TracerMemo)>> {
+) -> Result<Vec<(&'a BlindAssetRecord, &'a TracerMemo, &'a XfrPublicKey)>> {
     let mut result = vec![];
+
+    let xfr_body = &xfr_note.body;
+
     if xfr_body.inputs.len() + xfr_body.outputs.len()
         != xfr_body.asset_tracing_memos.len()
     {
         return Err(eg!(ZeiError::InconsistentStructureError));
     }
-    for (blind_asset_record, bar_memos) in xfr_body
+
+    let public_keys = xfr_body
+        .input_public_keys
+        .iter()
+        .chain(&xfr_note.output_public_keys);
+
+    for ((blind_asset_record, bar_memos), public_key) in xfr_body
         .inputs
         .iter()
         .chain(&xfr_body.outputs)
         .zip(&xfr_body.asset_tracing_memos)
+        .zip(public_keys)
     {
         for memo in bar_memos {
             if memo.enc_key == *pub_key {
-                result.push((blind_asset_record, memo));
+                result.push((blind_asset_record, memo, public_key));
             }
         }
     }
@@ -959,10 +999,10 @@ pub type RecordData = (u64, AssetType, Vec<Attr>, XfrPublicKey);
 /// Returning ZeiError::BogusAssetTracerMemo in case a TracerMemo decrypts inconsistent information, and
 /// ZeiError::InconsistentStructureError if amount or asset_type cannot be found.
 pub fn trace_assets(
-    xfr_body: &XfrBody,
+    xfr_note: &XfrNote,
     tracer_keypair: &AssetTracerKeyPair,
 ) -> Result<Vec<RecordData>> {
-    let bars_memos = find_tracing_memos(xfr_body, &tracer_keypair.enc_key).c(d!())?;
+    let bars_memos = find_tracing_memos(xfr_note, &tracer_keypair.enc_key).c(d!())?;
     extract_tracing_info(bars_memos.as_slice(), &tracer_keypair.dec_key).c(d!())
 }
 
@@ -973,11 +1013,11 @@ pub fn trace_assets(
 /// Returning ZeiError::BogusAssetTracerMemo in case a TracerMemo decrypts inconsistent information, and
 /// ZeiError::InconsistentStructureError if amount or asset_type cannot be found.
 pub fn trace_assets_brute_force(
-    xfr_body: &XfrBody,
+    xfr_note: &XfrNote,
     tracer_keypair: &AssetTracerKeyPair,
     candidate_asset_types: &[AssetType],
 ) -> Result<Vec<RecordData>> {
-    let bars_memos = find_tracing_memos(xfr_body, &tracer_keypair.enc_key).c(d!())?;
+    let bars_memos = find_tracing_memos(xfr_note, &tracer_keypair.enc_key).c(d!())?;
     extract_tracing_info_brute_force(
         bars_memos.as_slice(),
         &tracer_keypair.dec_key,
@@ -994,11 +1034,11 @@ pub fn trace_assets_brute_force(
 /// ZeiError::InconsistentStructureError if amount or asset_type cannot be found.
 /// Return Vector of RecordData = (amount, asset_type, identity attributes, public key)
 pub(crate) fn extract_tracing_info(
-    memos: &[(&BlindAssetRecord, &TracerMemo)],
+    memos: &[(&BlindAssetRecord, &TracerMemo, &XfrPublicKey)],
     dec_key: &AssetTracerDecKeys,
 ) -> Result<Vec<RecordData>> {
     let mut result = vec![];
-    for (blind_asset_record, memo) in memos {
+    for (blind_asset_record, memo, public_key) in memos {
         let (amount_option, asset_type_option, attributes) =
             memo.decrypt(dec_key).c(d!())?; // return BogusAssetTracerMemo in case of error.
         let amount = match memo.lock_amount {
@@ -1027,12 +1067,7 @@ pub(crate) fn extract_tracing_info(
             },
         };
 
-        result.push((
-            amount,
-            asset_type,
-            attributes,
-            blind_asset_record.public_key,
-        ));
+        result.push((amount, asset_type, attributes, *public_key.clone()));
     }
     Ok(result)
 }
@@ -1045,7 +1080,7 @@ pub(crate) fn extract_tracing_info(
 /// Return Error in case data cannot be retrieved due to inconsistent structure.
 /// Eg. amount is not in a BlindAssetRecord nor in the corresponding AssetTracerMemo
 pub(crate) fn extract_tracing_info_brute_force(
-    memos: &[(&BlindAssetRecord, &TracerMemo)],
+    memos: &[(&BlindAssetRecord, &TracerMemo, &XfrPublicKey)],
     dec_key: &AssetTracerDecKeys,
     candidate_asset_types: &[AssetType],
 ) -> Result<Vec<RecordData>> {
@@ -1077,12 +1112,7 @@ pub(crate) fn extract_tracing_info_brute_force(
             .extract_identity_attributes_brute_force(&dec_key.attrs_dec_key)
             .c(d!())?;
 
-        result.push((
-            amount,
-            asset_type,
-            attributes,
-            blind_asset_record.public_key,
-        ));
+        result.push((amount, asset_type, attributes, bar_memo.2.clone()));
     }
     Ok(result)
 }

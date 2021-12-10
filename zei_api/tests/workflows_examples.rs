@@ -110,10 +110,7 @@ pub(crate) mod examples {
 
         assert_eq!(recv_open_asset_record.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record.amount, amount);
-        assert_eq!(
-            &recv_open_asset_record.blind_asset_record.public_key,
-            &recv_pub_key
-        );
+        assert_eq!(&recv_open_asset_record.public_key, &recv_pub_key);
     }
 
     #[test]
@@ -183,10 +180,7 @@ pub(crate) mod examples {
         assert!(&xfr_note.body.outputs[0].amount.is_confidential());
         assert_eq!(recv_open_asset_record.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record.amount, amount);
-        assert_eq!(
-            &recv_open_asset_record.blind_asset_record.public_key,
-            &recv_pub_key
-        );
+        assert_eq!(&recv_open_asset_record.public_key, &recv_pub_key);
     }
 
     #[test]
@@ -305,10 +299,7 @@ pub(crate) mod examples {
         assert!(&xfr_note.body.outputs[0].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record1.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record1.amount, amount_out1);
-        assert_eq!(
-            &recv_open_asset_record1.blind_asset_record.public_key,
-            &recv1_pub_key
-        );
+        assert_eq!(&recv_open_asset_record1.public_key, &recv1_pub_key);
 
         let recv_bar2 = &xfr_note.body.outputs[1];
         let recv_open_asset_record2 = open_blind_asset_record(
@@ -323,10 +314,7 @@ pub(crate) mod examples {
         assert!(&xfr_note.body.outputs[1].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record2.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record2.amount, amount_out2);
-        assert_eq!(
-            &recv_open_asset_record2.blind_asset_record.public_key,
-            &recv2_pub_key
-        );
+        assert_eq!(&recv_open_asset_record2.public_key, &recv2_pub_key);
 
         //7. Check asset tracing
         assert_eq!(xfr_note.body.asset_tracing_memos.len(), 4);
@@ -335,13 +323,13 @@ pub(crate) mod examples {
         assert_eq!(xfr_note.body.asset_tracing_memos[2].len(), 0);
         assert_eq!(xfr_note.body.asset_tracing_memos[3].len(), 0);
 
-        let records_data = match trace_assets(&xfr_note.body, &tracer_keys) {
+        let records_data = match trace_assets(&xfr_note, &tracer_keys) {
             Ok(data) => data,
             Err(e) => {
                 err_eq!(ZeiError::BogusAssetTracerMemo, e);
                 // User may choose to call brute_force decrypt to get the correct information
                 pnk!(trace_assets_brute_force(
-                    &xfr_note.body,
+                    &xfr_note,
                     &tracer_keys,
                     &[ASSET1_TYPE, ASSET2_TYPE, ASSET3_TYPE],
                 ))
@@ -463,10 +451,7 @@ pub(crate) mod examples {
         assert!(!&xfr_note.body.outputs[0].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record1.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record1.amount, amount_out1);
-        assert_eq!(
-            &recv_open_asset_record1.blind_asset_record.public_key,
-            &recv1_pub_key
-        );
+        assert_eq!(&recv_open_asset_record1.public_key, &recv1_pub_key);
 
         let recv_bar2 = &xfr_note.body.outputs[1];
         let recv_open_asset_record2 = open_blind_asset_record(
@@ -481,10 +466,7 @@ pub(crate) mod examples {
         assert!(!&xfr_note.body.outputs[1].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record2.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record2.amount, amount_out2);
-        assert_eq!(
-            &recv_open_asset_record2.blind_asset_record.public_key,
-            &recv2_pub_key
-        );
+        assert_eq!(&recv_open_asset_record2.public_key, &recv2_pub_key);
 
         //7. Check asset tracing
         assert_eq!(xfr_note.body.asset_tracing_memos.len(), 3);
@@ -492,13 +474,13 @@ pub(crate) mod examples {
         assert_eq!(xfr_note.body.asset_tracing_memos[1].len(), 1);
         assert_eq!(xfr_note.body.asset_tracing_memos[2].len(), 1);
 
-        let records_data = match trace_assets(&xfr_note.body, &asset_tracing_key_pair) {
+        let records_data = match trace_assets(&xfr_note, &asset_tracing_key_pair) {
             Ok(data) => data,
             Err(e) => {
                 err_eq!(ZeiError::BogusAssetTracerMemo, e);
                 // User may choose to call brute_force decrypt to get the correct information
                 pnk!(trace_assets_brute_force(
-                    &xfr_note.body,
+                    &xfr_note,
                     &asset_tracing_key_pair,
                     &[ASSET1_TYPE, ASSET2_TYPE],
                 ))
@@ -675,8 +657,8 @@ pub(crate) mod examples {
         let policies = XfrNotePoliciesRef::new(
             vec![&policies, &policies],
             vec![
-                Some(&AIR[xfr_note.body.inputs[0].public_key.as_bytes()]),
-                Some(&AIR[xfr_note.body.inputs[1].public_key.as_bytes()]),
+                Some(&AIR[xfr_note.body.input_public_keys[0].as_bytes()]),
+                Some(&AIR[xfr_note.body.input_public_keys[1].as_bytes()]),
             ],
             vec![&no_policies],
             vec![None],
@@ -699,10 +681,7 @@ pub(crate) mod examples {
         assert!(!&xfr_note.body.outputs[0].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record1.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record1.amount, amount_out1);
-        assert_eq!(
-            &recv_open_asset_record1.blind_asset_record.public_key,
-            &recv1_pub_key
-        );
+        assert_eq!(&recv_open_asset_record1.public_key, &recv1_pub_key);
 
         //7. asset tracing on inputs
         assert_eq!(xfr_note.body.asset_tracing_memos.len(), 3);
@@ -710,13 +689,13 @@ pub(crate) mod examples {
         assert_eq!(xfr_note.body.asset_tracing_memos[1].len(), 1);
         assert_eq!(xfr_note.body.asset_tracing_memos[2].len(), 0);
 
-        let records_data = match trace_assets(&xfr_note.body, &tracer_keys) {
+        let records_data = match trace_assets(&xfr_note, &tracer_keys) {
             Ok(data) => data,
             Err(e) => {
                 err_eq!(ZeiError::BogusAssetTracerMemo, e);
                 // User may choose to call brute_force decrypt to get the correct information
                 pnk!(trace_assets_brute_force(
-                    &xfr_note.body,
+                    &xfr_note,
                     &tracer_keys,
                     &[ASSET1_TYPE, ASSET2_TYPE, ASSET3_TYPE],
                 ))
@@ -895,8 +874,8 @@ pub(crate) mod examples {
             vec![None],
             vec![&policies, &policies],
             vec![
-                Some(&AIR[xfr_note.body.outputs[0].public_key.as_bytes()]),
-                Some(&AIR[xfr_note.body.outputs[1].public_key.as_bytes()]),
+                Some(&AIR[xfr_note.output_public_keys[0].as_bytes()]),
+                Some(&AIR[xfr_note.output_public_keys[1].as_bytes()]),
             ],
         );
 
@@ -917,10 +896,7 @@ pub(crate) mod examples {
         assert!(!&xfr_note.body.outputs[0].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record1.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record1.amount, amount_out1);
-        assert_eq!(
-            &recv_open_asset_record1.blind_asset_record.public_key,
-            &recv_user1_pub_key
-        );
+        assert_eq!(&recv_open_asset_record1.public_key, &recv_user1_pub_key);
 
         let recv_bar2 = &xfr_note.body.outputs[1];
         let recv_open_asset_record2 = open_blind_asset_record(
@@ -935,10 +911,7 @@ pub(crate) mod examples {
         assert!(!&xfr_note.body.outputs[1].asset_type.is_confidential());
         assert_eq!(recv_open_asset_record2.asset_type, ASSET1_TYPE);
         assert_eq!(recv_open_asset_record2.amount, amount_out2);
-        assert_eq!(
-            &recv_open_asset_record2.blind_asset_record.public_key,
-            &recv_user2_pub_key
-        );
+        assert_eq!(&recv_open_asset_record2.public_key, &recv_user2_pub_key);
 
         //7. asset tracing on inputs
         assert_eq!(xfr_note.body.asset_tracing_memos.len(), 3);
@@ -946,13 +919,13 @@ pub(crate) mod examples {
         assert_eq!(xfr_note.body.asset_tracing_memos[1].len(), 1);
         assert_eq!(xfr_note.body.asset_tracing_memos[2].len(), 1);
 
-        let records_data = match trace_assets(&xfr_note.body, &tracer_keys) {
+        let records_data = match trace_assets(&xfr_note, &tracer_keys) {
             Ok(data) => data,
             Err(e) => {
                 err_eq!(ZeiError::BogusAssetTracerMemo, e);
                 // User may choose to call brute_force decrypt to get the correct information
                 pnk!(trace_assets_brute_force(
-                    &xfr_note.body,
+                    &xfr_note,
                     &tracer_keys,
                     &[ASSET1_TYPE, ASSET2_TYPE, ASSET3_TYPE],
                 ))
@@ -1277,14 +1250,14 @@ pub(crate) mod examples {
         // 5. Verify xfr_note
         let no_policy = TracingPolicies::new();
         let input1_credential_commitment =
-            &AIR[xfr_note.body.inputs[0].public_key.as_bytes()];
+            &AIR[xfr_note.body.input_public_keys[0].as_bytes()];
         let input_policies =
             vec![&asset_tracing_policy_asset1_input, &no_policy, &no_policy];
         let inputs_sig_commitments =
             vec![Some(input1_credential_commitment), None, None];
 
         let output3_credential_commitment =
-            &AIR[xfr_note.body.outputs[2].public_key.as_bytes()];
+            &AIR[xfr_note.output_public_keys[2].as_bytes()];
         let output_policies = vec![
             &no_policy,
             &no_policy,
@@ -1304,7 +1277,7 @@ pub(crate) mod examples {
 
         // 5. check tracing
         // 5.1 tracer 1
-        let records_data = trace_assets(&xfr_note.body, &asset1_tracing_key).unwrap();
+        let records_data = trace_assets(&xfr_note, &asset1_tracing_key).unwrap();
         // In case of error, user can call trace_asset_brute_force:
         // let records_data = trace_assets_brute_force(&xfr_note.body,
         //                                &asset1_tracing_key,
@@ -1319,7 +1292,7 @@ pub(crate) mod examples {
             &user1_key_pair1.pub_key,
         );
 
-        let records_data = trace_assets(&xfr_note.body, &asset2_tracing_key).unwrap();
+        let records_data = trace_assets(&xfr_note, &asset2_tracing_key).unwrap();
         // In case of error, user can call trace_asset_brute_force:
         // let records_data = trace_assets_brute_force(&xfr_note.body,
         //                                &assete_tracing_key,

@@ -420,7 +420,7 @@ fn sample_blind_asset_record<R: CryptoRng + RngCore>(
             }
         };
     let blind_asset_record = BlindAssetRecord {
-        public_key: asset_record.public_key,
+        // public_key: asset_record.public_key,
         amount: xfr_amount,
         asset_type: xfr_asset_type,
     };
@@ -481,6 +481,7 @@ pub fn build_open_asset_record<R: CryptoRng + RngCore>(
         amount_blinds,
         asset_type: asset_record.asset_type,
         type_blind,
+        public_key: asset_record.public_key.clone(),
     };
 
     (open_asset_record, asset_tracing_memos, owner_memo)
@@ -571,6 +572,7 @@ pub fn open_blind_asset_record(
         amount_blinds,
         asset_type,
         type_blind,
+        public_key: keypair.get_pk(),
     })
 }
 
@@ -687,7 +689,7 @@ mod test {
 
         assert_eq!(amount, open_ar.amount);
         assert_eq!(asset_type, open_ar.asset_type);
-        assert_eq!(&keypair.pub_key, &open_ar.blind_asset_record.public_key);
+        assert_eq!(&keypair.pub_key, &open_ar.public_key);
 
         let expected_bar_amount;
         let expected_bar_asset_type;

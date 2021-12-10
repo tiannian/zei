@@ -103,6 +103,7 @@ impl AssetTypeZeiRepr {
 pub struct XfrNote {
     pub body: XfrBody,
     pub multisig: XfrMultiSig,
+    pub output_public_keys: Vec<XfrPublicKey>,
 }
 
 impl XfrNote {
@@ -119,15 +120,16 @@ pub struct XfrBody {
     pub proofs: XfrProofs,
     pub asset_tracing_memos: Vec<Vec<TracerMemo>>, // each input or output can have a set of tracing memos
     pub owners_memos: Vec<Option<OwnerMemo>>, // If confidential amount or asset type, lock the amount and/or asset type to the public key in asset_record
+    pub input_public_keys: Vec<XfrPublicKey>,
 }
 
 /// A transfer input or output record as seen in the ledger
 /// Amount and asset type can be confidential or non confidential
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BlindAssetRecord {
-    pub amount: XfrAmount,        // Amount being transferred
+    pub amount: XfrAmount, // Amount being transferred
     pub asset_type: XfrAssetType, // Asset type being transferred
-    pub public_key: XfrPublicKey, // ownership address
+                           // pub public_key: XfrPublicKey, // ownership address
 }
 
 impl BlindAssetRecord {
@@ -619,6 +621,7 @@ pub struct OpenAssetRecord {
     pub amount_blinds: (Scalar, Scalar), // use Scalar::zero() if unneeded
     pub asset_type: AssetType,
     pub type_blind: Scalar, // use Scalar::zero() if unneeded
+    pub public_key: XfrPublicKey,
 }
 
 impl OpenAssetRecord {
@@ -632,7 +635,7 @@ impl OpenAssetRecord {
         &self.amount
     }
     pub fn get_pub_key(&self) -> &XfrPublicKey {
-        &self.blind_asset_record.public_key
+        &self.public_key
     }
 }
 

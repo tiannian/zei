@@ -147,7 +147,7 @@ fn do_transfer_tests_single_asset(
         total_amount + 1,
         asset_type,
         outputs[3].open_asset_record.get_record_type(),
-        outputs[3].open_asset_record.blind_asset_record.public_key,
+        outputs[3].open_asset_record.public_key,
     );
     outputs[3] =
         AssetRecord::from_template_no_identity_tracing(&mut prng, &asset_record)
@@ -204,7 +204,7 @@ fn do_transfer_tests_single_asset(
         old_output3.open_asset_record.amount,
         AssetType::from_identical_byte(1u8),
         outputs[3].open_asset_record.get_record_type(),
-        old_output3.open_asset_record.blind_asset_record.public_key,
+        old_output3.open_asset_record.public_key,
     );
     outputs[3] =
         AssetRecord::from_template_no_identity_tracing(&mut prng, &asset_record)
@@ -269,7 +269,7 @@ fn do_transfer_tests_single_asset(
         input_amount,
         AssetType::from_identical_byte(1u8),
         inputs_template[1],
-        inputs[1].open_asset_record.blind_asset_record.public_key,
+        inputs[1].open_asset_record.public_key,
     );
     inputs[1] =
         AssetRecord::from_template_no_identity_tracing(&mut prng, &ar_template).unwrap();
@@ -1022,12 +1022,12 @@ mod asset_tracing {
             .map(|x| x.3)
             .collect_vec();
         let records_data_brute_force = trace_assets_brute_force(
-            &xfr_note.body,
+            &xfr_note,
             &input_templates[0].2,
             &candidate_assets,
         )
         .unwrap();
-        let records_data = trace_assets(&xfr_note.body, &input_templates[0].2).unwrap();
+        let records_data = trace_assets(&xfr_note, &input_templates[0].2).unwrap();
         assert_eq!(records_data, records_data_brute_force);
         if input_templates[0].1.len() == 1 {
             assert_eq!(records_data[0].0, input_amount);
@@ -1716,13 +1716,10 @@ mod asset_tracing {
             &policies
         ));
         let candidate_assets = [BITCOIN_ASSET, GOLD_ASSET];
-        let records_data_brute_force = trace_assets_brute_force(
-            &xfr_note.body,
-            &tracer1_keypair,
-            &candidate_assets,
-        )
-        .unwrap();
-        let records_data = trace_assets(&xfr_note.body, &tracer1_keypair).unwrap();
+        let records_data_brute_force =
+            trace_assets_brute_force(&xfr_note, &tracer1_keypair, &candidate_assets)
+                .unwrap();
+        let records_data = trace_assets(&xfr_note, &tracer1_keypair).unwrap();
         assert_eq!(records_data, records_data_brute_force);
         let ids: Vec<u32> = vec![];
         assert_eq!(records_data.len(), 3);
@@ -1739,13 +1736,10 @@ mod asset_tracing {
         assert_eq!(records_data[2].2, ids); // third output no id tracing
         assert_eq!(records_data[2].3, out_keys[2].pub_key); // third output no id tracing
 
-        let records_data_brute_force = trace_assets_brute_force(
-            &xfr_note.body,
-            &tracer2_keypair,
-            &candidate_assets,
-        )
-        .unwrap();
-        let records_data = trace_assets(&xfr_note.body, &tracer2_keypair).unwrap();
+        let records_data_brute_force =
+            trace_assets_brute_force(&xfr_note, &tracer2_keypair, &candidate_assets)
+                .unwrap();
+        let records_data = trace_assets(&xfr_note, &tracer2_keypair).unwrap();
         assert_eq!(records_data, records_data_brute_force);
         let ids: Vec<u32> = vec![];
         assert_eq!(records_data.len(), 3);

@@ -24,14 +24,14 @@ pub const ASSET_TYPE_2: AssetType = AssetType([1u8; ASSET_TYPE_LENGTH]);
 // Simulate getting a BlindAssetRecord from Ledger
 #[allow(clippy::clone_on_copy)]
 pub fn non_conf_blind_asset_record_from_ledger(
-    key: &XfrPublicKey,
+    _key: &XfrPublicKey,
     amount: u64,
     asset_type: AssetType,
 ) -> BlindAssetRecord {
     BlindAssetRecord {
         amount: XfrAmount::NonConfidential(amount),
         asset_type: XfrAssetType::NonConfidential(asset_type),
-        public_key: key.clone(),
+        // public_key: key.clone(),
     }
 }
 

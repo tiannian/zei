@@ -26,5 +26,5 @@ pub mod xfr;
 pub use utils::errors;
 
 pub use algebra::ristretto;
-pub use crypto::chaum_pedersen;
 pub use crypto::basics::hybrid_encryption;
+pub use crypto::chaum_pedersen;
